@@ -1,0 +1,1866 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>百数表拼拼乐</title>
+    <style>
+    /* 全局样式 */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Arial Rounded MT Bold', 'Microsoft YaHei', sans-serif;
+    }
+
+    body {
+        background-color: #f0f8ff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 20px;
+        background-image: linear-gradient(to bottom, #a1c4fd, #c2e9fb);
+    }
+
+    .game-container {
+        max-width: 1200px;
+        width: 100%;
+        background-color: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    /* 头部样式 */
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 3px dashed #ffb6c1;
+    }
+
+    .score-container, .timer-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 24px;
+        font-weight: bold;
+        background-color: #fff0f5;
+        padding: 10px 15px;
+        border-radius: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .title h1 {
+        color: #ff6b88;
+        text-align: center;
+        font-size: 2.5rem;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .emoji {
+        font-size: 1.3em;
+        margin: 0 5px;
+    }
+
+    /* 游戏区域样式 */
+    .game-area {
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-top: 20px;
+    }
+
+    .number-grid-container, .pieces-container {
+        flex: 1;
+        min-width: 300px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+    }
+
+    /* 统一格子大小规则 */
+    :root {
+        --cell-size: 40px; /* 定义统一的单元格大小 */
+    }
+
+    .number-grid {
+        position: relative;
+        width: 400px;
+        height: 400px;
+        display: grid;
+        grid-template-columns: repeat(10, 40px);
+        grid-template-rows: repeat(10, 40px);
+        gap: 0;
+        background-color: #f0f0f0;
+        border: 2px solid #333;
+        border-radius: 5px;
+        user-select: none;
+    }
+
+    .grid-cell {
+        width: var(--cell-size);
+        height: var(--cell-size);
+        background-color: #f9f9f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 16px;
+        border: 1px solid #ddd;
+        transition: all 0.3s ease;
+    }
+
+    .grid-cell.highlight {
+        background-color: #e6f7ff;
+        box-shadow: inset 0 0 5px rgba(0, 123, 255, 0.5);
+    }
+
+    .pieces {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 15px;
+        width: 100%;
+        min-height: 500px;
+        padding: 15px;
+        background-color: #f5f5f5;
+        border-radius: 15px;
+        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+        overflow-y: auto;
+    }
+
+    .piece {
+        position: relative;
+        display: grid;
+        cursor: grab;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        z-index: 1;
+        margin: 5px;
+        user-select: none; /* 防止拖动时选中文本 */
+    }
+
+    .piece:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        z-index: 2;
+    }
+
+    .piece.dragging {
+        opacity: 0.8;
+        cursor: grabbing;
+    }
+
+    /* 修复百数表内拼图可拖拽的样式 */
+    .number-grid .piece {
+        position: absolute; /* 确保在网格中位置正确 */
+        cursor: grab;
+    }
+
+    .number-grid .piece:hover {
+        transform: scale(1.03); /* 悬停时轻微放大，但不要太大 */
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+        z-index: 10; /* 确保在其他元素之上 */
+    }
+
+    .number-grid .piece.dragging {
+        cursor: grabbing;
+        z-index: 100; /* 拖动时置于最上层 */
+    }
+
+    .piece-cell {
+        width: var(--cell-size);
+        height: var(--cell-size);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    /* 控制区域样式 */
+    .controls {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .game-button {
+        padding: 12px 24px;
+        font-size: 18px;
+        font-weight: bold;
+        border: none;
+        border-radius: 50px;
+        background: linear-gradient(to right, #ff758c, #ff7eb3);
+        color: white;
+        cursor: pointer;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+    }
+
+    .game-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+        background: linear-gradient(to right, #ff5277, #ff65a3);
+    }
+
+    .game-button:active {
+        transform: translateY(1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    /* 烟花效果 */
+    .fireworks {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9999;
+        display: none;
+    }
+
+    .firework {
+        position: absolute;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        box-shadow: 0 0 10px 2px;
+        animation: firework-animation 2s ease-out;
+        transform-origin: center;
+    }
+
+    @keyframes firework-animation {
+        0% {
+            transform: scale(0);
+            opacity: 1;
+        }
+        50% {
+            opacity: 1;
+        }
+        100% {
+            transform: scale(15);
+            opacity: 0;
+        }
+    }
+
+    /* 完成游戏后的弹出模态框 */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background-color: white;
+        padding: 30px;
+        border-radius: 20px;
+        text-align: center;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
+        animation: pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes pop-in {
+        0% {
+            transform: scale(0.5);
+            opacity: 0;
+        }
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .modal h2 {
+        color: #ff6b88;
+        font-size: 2.5rem;
+        margin-bottom: 20px;
+    }
+
+    .modal p {
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        .game-area {
+            flex-direction: column;
+        }
+        
+        .header {
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .controls {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .title h1 {
+            font-size: 1.8rem;
+        }
+        
+        :root {
+            --cell-size: 30px; /* 在小屏幕上减小单元格大小 */
+        }
+    }
+
+    /* 拼图预览容器样式 */
+    .piece-preview {
+        position: absolute;
+        z-index: 10;
+        pointer-events: none;
+        transition: all 0.15s ease-out;
+        background-color: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 0 15px rgba(100, 100, 255, 0.5);
+        border-radius: 4px;
+    }
+
+    /* 预览单元格样式 */
+    .preview-cell {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        font-size: 18px;
+    }
+
+    /* 正确放置时的脉冲动画 */
+    .preview-cell.correct {
+        animation: pulseCorrect 1.5s infinite;
+    }
+
+    /* 不正确放置时的脉冲动画 */
+    .preview-cell.incorrect {
+        animation: pulseIncorrect 1.5s infinite;
+    }
+
+    /* 动画关键帧 - 正确放置 */
+    @keyframes pulseCorrect {
+        0% { box-shadow: 0 0 0 0 rgba(50, 205, 50, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(50, 205, 50, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(50, 205, 50, 0); }
+    }
+
+    /* 动画关键帧 - 不正确放置 */
+    @keyframes pulseIncorrect {
+        0% { box-shadow: 0 0 0 0 rgba(255, 165, 0, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(255, 165, 0, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 165, 0, 0); }
+    } 
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <div class="score-container">
+                <span class="emoji">🎮</span>
+                <span>分数：</span>
+                <span id="score">0</span>
+            </div>
+            <div class="title">
+                <h1>百数表拼拼乐 <span class="emoji">🎯</span></h1>
+            </div>
+            <div class="timer-container">
+                <span class="emoji">⏱️</span>
+                <span>时间：</span>
+                <span id="timer">00:00</span>
+            </div>
+        </div>
+        
+        <div class="game-area">
+            <div class="number-grid-container">
+                <div id="numberGrid" class="number-grid"></div>
+            </div>
+            
+            <div class="pieces-container">
+                <h3>拖动右边的拼图到左边正确的位置 <span class="emoji">👈</span></h3>
+                <div id="pieces" class="pieces"></div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="startButton" class="game-button">开始游戏 <span class="emoji">🚀</span></button>
+            <button id="resetButton" class="game-button">重新开始 <span class="emoji">🔄</span></button>
+            <button id="musicToggle" class="game-button">音乐开/关 <span class="emoji">🎵</span></button>
+        </div>
+    </div>
+    
+    <div id="fireworks" class="fireworks"></div>
+    <div id="congratsModal" class="modal">
+        <div class="modal-content">
+            <h2>恭喜你! <span class="emoji">🎉</span></h2>
+            <p>你成功完成了百数表拼图!</p>
+            <p>你的得分: <span id="finalScore"></span></p>
+            <p>用时: <span id="finalTime"></span></p>
+            <button id="playAgainButton" class="game-button">再玩一次 <span class="emoji">🎮</span></button>
+        </div>
+    </div>
+    
+    <audio id="backgroundMusic" loop>
+        <source src="assets/sounds/background_music.mp3" type="audio/mp3">
+    </audio>
+    <audio id="correctSound">
+        <source src="assets/sounds/correct.mp3" type="audio/mp3">
+    </audio>
+    <audio id="successSound">
+        <source src="assets/sounds/success.mp3" type="audio/mp3">
+    </audio>
+    
+    <script>
+    // 游戏状态变量
+    let gameState = {
+        score: 0,
+        timer: 0,
+        timerInterval: null,
+        isGameStarted: false,
+        isGameCompleted: false,
+        musicOn: false,
+        grid: [], // 存储完整百数表
+        pieces: [], // 存储切割后的方块
+        placedPieces: {}, // 存储已放置的方块信息，以网格位置为键
+        correctPlacements: 0, // 正确放置的方块数
+        totalPieces: 0, // 总方块数
+        currentDraggingPiece: null, // 当前正在拖动的拼图
+        previewCells: [], // 存储预览单元格
+        previewElement: null // 预览元素
+    };
+
+    // DOM 元素
+    const elements = {
+        numberGrid: document.getElementById('numberGrid'),
+        pieces: document.getElementById('pieces'),
+        score: document.getElementById('score'),
+        timer: document.getElementById('timer'),
+        startButton: document.getElementById('startButton'),
+        resetButton: document.getElementById('resetButton'),
+        musicToggle: document.getElementById('musicToggle'),
+        fireworks: document.getElementById('fireworks'),
+        congratsModal: document.getElementById('congratsModal'),
+        finalScore: document.getElementById('finalScore'),
+        finalTime: document.getElementById('finalTime'),
+        playAgainButton: document.getElementById('playAgainButton'),
+        backgroundMusic: document.getElementById('backgroundMusic'),
+        correctSound: document.getElementById('correctSound'),
+        successSound: document.getElementById('successSound')
+    };
+
+    // 颜色数组，用于方块颜色
+    const colors = [
+        '#FF9AA2', '#FFB7B2', '#FFDAC1', '#E2F0CB', '#B5EAD7',
+        '#C7CEEA', '#B5D8EB', '#D7B9D5', '#F4ACBF', '#9ADCFF',
+        '#FFD166', '#EF476F', '#06D6A0', '#118AB2', '#073B4C'
+    ];
+
+    // 初始化游戏
+    function initGame() {
+        // 设置事件监听器
+        elements.startButton.addEventListener('click', startGame);
+        elements.resetButton.addEventListener('click', resetGame);
+        elements.musicToggle.addEventListener('click', toggleMusic);
+        elements.playAgainButton.addEventListener('click', resetGame);
+        
+        // 创建百数表格子
+        createNumberGrid();
+        
+        // 初始化音乐和音效
+        setupAudio();
+        
+        // 全局拖拽事件
+        document.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+        
+        // 全局拖拽结束事件
+        document.addEventListener('dragend', function(e) {
+            clearPiecePreview();
+            gameState.currentDraggingPiece = null;
+        });
+        
+        // 设置网格区域的拖拽和放置事件
+        elements.numberGrid.addEventListener('dragover', handleDragOver);
+        elements.numberGrid.addEventListener('drop', handleDrop);
+        
+        // 设置拼图区域的拖拽和放置事件
+        elements.pieces.addEventListener('dragover', (e) => e.preventDefault());
+        elements.pieces.addEventListener('drop', handleDrop);
+        
+        // 初始化预览元素为null
+        gameState.previewElement = null;
+    }
+
+    // 创建百数表格子（空白，待拼图）
+    function createNumberGrid() {
+        elements.numberGrid.innerHTML = '';
+        gameState.grid = [];
+        
+        for (let row = 0; row < 10; row++) {
+            const rowArray = [];
+            for (let col = 0; col < 10; col++) {
+                const number = row * 10 + col + 1;
+                
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell';
+                cell.dataset.row = row;
+                cell.dataset.col = col;
+                cell.dataset.number = number;
+                
+                // 数字隐藏，只显示空白格子
+                // cell.textContent = number;
+                
+                cell.addEventListener('dragenter', handleDragEnter);
+                cell.addEventListener('dragleave', handleDragLeave);
+                
+                elements.numberGrid.appendChild(cell);
+                rowArray.push({
+                    element: cell,
+                    number: number,
+                    filled: false,
+                    pieceId: null // 存储放置在此格子上的拼图ID
+                });
+            }
+            gameState.grid.push(rowArray);
+        }
+    }
+
+    // 开始游戏
+    function startGame() {
+        if (gameState.isGameStarted) return;
+        
+        resetGame();
+        gameState.isGameStarted = true;
+        elements.startButton.disabled = true;
+        
+        // 生成拼图碎片
+        generatePieces();
+        
+        // 开始计时器
+        startTimer();
+        
+        // 播放背景音乐
+        if (!gameState.musicOn) {
+            toggleMusic();
+        }
+    }
+
+    // 重置游戏
+    function resetGame() {
+        // 停止计时器
+        clearInterval(gameState.timerInterval);
+        
+        // 重置游戏状态
+        gameState.score = 0;
+        gameState.timer = 0;
+        gameState.isGameStarted = false;
+        gameState.isGameCompleted = false;
+        gameState.correctPlacements = 0;
+        gameState.totalPieces = 0;
+        gameState.placedPieces = {};
+        gameState.currentDraggingPiece = null;
+        gameState.previewCells = [];
+        
+        // 移除预览元素
+        if (gameState.previewElement) {
+            if (gameState.previewElement.parentNode) {
+                gameState.previewElement.parentNode.removeChild(gameState.previewElement);
+            }
+            gameState.previewElement = null;
+        }
+        
+        // 更新UI
+        elements.score.textContent = '0';
+        elements.timer.textContent = '00:00';
+        elements.congratsModal.style.display = 'none';
+        elements.fireworks.innerHTML = '';
+        elements.fireworks.style.display = 'none';
+        elements.startButton.disabled = false;
+        
+        // 重新创建百数表和拼图区
+        createNumberGrid();
+        elements.pieces.innerHTML = '';
+        gameState.pieces = [];
+    }
+
+    // 启动计时器
+    function startTimer() {
+        clearInterval(gameState.timerInterval);
+        gameState.timer = 0;
+        updateTimerDisplay();
+        
+        gameState.timerInterval = setInterval(() => {
+            gameState.timer++;
+            updateTimerDisplay();
+        }, 1000);
+    }
+
+    // 更新计时器显示
+    function updateTimerDisplay() {
+        const minutes = Math.floor(gameState.timer / 60).toString().padStart(2, '0');
+        const seconds = (gameState.timer % 60).toString().padStart(2, '0');
+        elements.timer.textContent = `${minutes}:${seconds}`;
+    }
+
+    // 音乐和音效设置
+    function setupAudio() {
+        // 预加载音效
+        elements.correctSound.load();
+        elements.successSound.load();
+        elements.backgroundMusic.load();
+    }
+
+    // 切换背景音乐
+    function toggleMusic() {
+        if (gameState.musicOn) {
+            elements.backgroundMusic.pause();
+            elements.musicToggle.innerHTML = '音乐开/关 <span class="emoji">🔇</span>';
+        } else {
+            elements.backgroundMusic.play();
+            elements.musicToggle.innerHTML = '音乐开/关 <span class="emoji">🎵</span>';
+        }
+        gameState.musicOn = !gameState.musicOn;
+    }
+
+    // 生成游戏拼图碎片
+    function generatePieces() {
+        elements.pieces.innerHTML = '';
+        gameState.pieces = [];
+        
+        // 按照特定规格生成拼图
+        const pieces = generateSpecificPieces();
+        
+        // 调试输出
+        console.log(`生成了 ${pieces.length} 个拼图，总共覆盖 ${pieces.reduce((sum, p) => sum + p.length, 0)} 个格子`);
+        
+        gameState.totalPieces = pieces.length;
+        
+        // 将拼图添加到DOM
+        pieces.forEach((piece, index) => {
+            const color = colors[index % colors.length];
+            const pieceElement = createPieceElement(piece, color, index);
+            elements.pieces.appendChild(pieceElement);
+            gameState.pieces.push({
+                id: index,
+                element: pieceElement,
+                cells: piece,
+                color: color,
+                inGrid: false, // 标记拼图是否在网格中
+                position: null // 在网格中的位置
+            });
+        });
+    }
+
+    // 按照特定规格生成拼图
+    function generateSpecificPieces() {
+        // 创建一个10x10的网格，表示数字1-100
+        const grid = Array(10).fill().map((_, row) => {
+            return Array(10).fill().map((_, col) => ({
+                row,
+                col,
+                number: row * 10 + col + 1,
+                assigned: false,
+                pieceId: -1 // 用于标记属于哪个拼图
+            }));
+        });
+        
+        // 要生成的拼图规格: [大小, 数量]
+        const pieceSpecs = [
+            { size: 12, count: 3 },  // 12个数字的方块 x 3
+            { size: 10, count: 5 },  // 10个数字的方块 x 5
+            { size: 7, count: 2 }    // 7个数字的方块 x 2
+        ];
+        
+        // 验证总格子数是否为100
+        const totalCells = pieceSpecs.reduce((sum, spec) => sum + spec.size * spec.count, 0);
+        if (totalCells !== 100) {
+            console.warn(`拼图规格总格子数(${totalCells})不等于100，可能无法填满百数表`);
+        }
+        
+        // 创建确保能填满格子的拼图生成方案
+        let allPieces = generatePiecesToFillGrid(grid, pieceSpecs);
+        
+        // 如果无法按规格生成，回退到传统方法并尝试补齐
+        if (!allPieces || allPieces.length === 0) {
+            console.warn("使用填充算法生成拼图失败，回退到传统方法并尝试补齐");
+            allPieces = generatePiecesTraditionalWay(grid, pieceSpecs);
+        }
+        
+        // 最后强制确保拼图块数量为10个
+        allPieces = enforceExactlyTenPieces(allPieces, grid);
+        
+        return allPieces;
+    }
+
+    // 强制确保拼图块数量为10个
+    function enforceExactlyTenPieces(pieces, grid) {
+        // 如果已经是10个，直接返回
+        if (pieces.length === 10) {
+            return pieces;
+        }
+        
+        console.log(`调整拼图块数量，当前为${pieces.length}，目标为10`);
+        
+        // 如果少于10个拼图，需要拆分一些大拼图
+        if (pieces.length < 10) {
+            // 先按照拼图大小排序（从大到小）
+            pieces.sort((a, b) => b.length - a.length);
+            
+            while (pieces.length < 10) {
+                // 找到最大的拼图
+                const largestPiece = pieces[0];
+                
+                // 如果最大拼图的大小小于2，无法再拆分，退出循环
+                if (largestPiece.length < 2) {
+                    console.warn("无法拆分出10个拼图，拼图已经很小了");
+                    break;
+                }
+                
+                // 计算要拆分的单元格数量：尽量使拆分后的两个部分大小相当
+                const splitSize = Math.ceil(largestPiece.length / 2);
+                
+                // 从最大拼图中拆分出一部分单元格
+                const newPiece = largestPiece.splice(splitSize);
+                
+                // 如果拆分出的新拼图不为空，添加到拼图列表
+                if (newPiece.length > 0) {
+                    pieces.push(newPiece);
+                }
+                
+                // 重新排序
+                pieces.sort((a, b) => b.length - a.length);
+            }
+        }
+        
+        // 如果超过10个拼图，需要合并一些小拼图
+        while (pieces.length > 10) {
+            // 按照拼图大小排序（从小到大）
+            pieces.sort((a, b) => a.length - b.length);
+            
+            // 合并最小的两个拼图
+            const smallest1 = pieces.shift();
+            const smallest2 = pieces.shift();
+            
+            // 将它们合并为一个拼图
+            const mergedPiece = [...smallest1, ...smallest2];
+            pieces.push(mergedPiece);
+        }
+        
+        // 确保拼图块信息完整
+        return pieces.map(piece => {
+            return piece.map(cell => {
+                // 确保每个单元格都有完整的信息
+                if (typeof cell.number === 'undefined') {
+                    // 如果缺少number属性，根据row和col计算
+                    return {
+                        row: cell.row,
+                        col: cell.col,
+                        number: cell.row * 10 + cell.col + 1
+                    };
+                }
+                return cell;
+            });
+        });
+    }
+
+    // 使用新算法生成能够填满网格的拼图块
+    function generatePiecesToFillGrid(grid, pieceSpecs) {
+        // 创建一个带有拼图ID的网格副本
+        const filledGrid = Array(10).fill().map((_, row) => {
+            return Array(10).fill().map((_, col) => ({
+                row, 
+                col,
+                pieceId: -1,
+                assigned: false
+            }));
+        });
+        
+        // 创建10个拼图块，每个拼图块保存其包含的单元格
+        const pieces = [];
+        let currentPieceId = 0;
+        
+        // 按照规格顺序生成拼图
+        for (const spec of pieceSpecs) {
+            const { size, count } = spec;
+            
+            for (let i = 0; i < count; i++) {
+                if (currentPieceId >= 10) break; // 最多10个拼图块
+                
+                // 找一个未分配的起始点
+                let startCell = findUnassignedCell(filledGrid);
+                if (!startCell) {
+                    console.warn("无法找到未分配的起始单元格");
+                    break;
+                }
+                
+                // 从这个起始点生成一个指定大小的连通拼图
+                const piece = growPieceFromSeed(filledGrid, startCell, size, currentPieceId);
+                
+                if (piece && piece.length === size) {
+                    pieces.push(piece);
+                    currentPieceId++;
+                } else {
+                    console.warn(`无法生成大小为 ${size} 的拼图`);
+                    // 如果无法生成，则清除部分分配的单元格
+                    if (piece) {
+                        piece.forEach(cell => {
+                            filledGrid[cell.row][cell.col].pieceId = -1;
+                            filledGrid[cell.row][cell.col].assigned = false;
+                        });
+                    }
+                }
+            }
+        }
+        
+        // 检查是否所有单元格都已分配
+        let allAssigned = true;
+        const unassignedCells = [];
+        
+        for (let row = 0; row < 10; row++) {
+            for (let col = 0; col < 10; col++) {
+                if (filledGrid[row][col].pieceId === -1) {
+                    allAssigned = false;
+                    unassignedCells.push({row, col});
+                }
+            }
+        }
+        
+        // 如果还有未分配的单元格，尝试将它们分配到已有的拼图中
+        if (!allAssigned && pieces.length > 0) {
+            console.warn(`有 ${unassignedCells.length} 个单元格未分配，尝试添加到现有拼图`);
+            
+            // 按照拼图ID分组
+            const pieceGroups = {};
+            for (let row = 0; row < 10; row++) {
+                for (let col = 0; col < 10; col++) {
+                    const pieceId = filledGrid[row][col].pieceId;
+                    if (pieceId !== -1) {
+                        if (!pieceGroups[pieceId]) {
+                            pieceGroups[pieceId] = [];
+                        }
+                        pieceGroups[pieceId].push({row, col});
+                    }
+                }
+            }
+            
+            // 对于每个未分配的单元格，找一个相邻的拼图添加
+            for (const cell of unassignedCells) {
+                let added = false;
+                
+                // 检查四个方向的相邻单元格
+                const directions = [{r:-1,c:0}, {r:0,c:1}, {r:1,c:0}, {r:0,c:-1}];
+                
+                for (const dir of directions) {
+                    const adjRow = cell.row + dir.r;
+                    const adjCol = cell.col + dir.c;
+                    
+                    // 检查是否在网格范围内
+                    if (adjRow >= 0 && adjRow < 10 && adjCol >= 0 && adjCol < 10) {
+                        const adjPieceId = filledGrid[adjRow][adjCol].pieceId;
+                        
+                        // 如果相邻单元格已分配到某个拼图，则将当前单元格也分配给它
+                        if (adjPieceId !== -1) {
+                            filledGrid[cell.row][cell.col].pieceId = adjPieceId;
+                            filledGrid[cell.row][cell.col].assigned = true;
+                            
+                            // 更新pieces数组
+                            const originalCells = grid[cell.row][cell.col];
+                            pieces[adjPieceId].push({
+                                row: cell.row,
+                                col: cell.col,
+                                number: cell.row * 10 + cell.col + 1
+                            });
+                            
+                            added = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // 如果没有相邻的拼图，随机选择一个拼图添加
+                if (!added && pieces.length > 0) {
+                    const randomPieceId = Math.floor(Math.random() * pieces.length);
+                    filledGrid[cell.row][cell.col].pieceId = randomPieceId;
+                    filledGrid[cell.row][cell.col].assigned = true;
+                    
+                    // 更新pieces数组
+                    pieces[randomPieceId].push({
+                        row: cell.row,
+                        col: cell.col,
+                        number: cell.row * 10 + cell.col + 1
+                    });
+                }
+            }
+        }
+        
+        // 将拼图ID转换为实际的拼图数据
+        const result = [];
+        for (let i = 0; i < pieces.length; i++) {
+            // 确保每个拼图包含原始数据
+            const pieceCells = pieces[i].map(cell => ({
+                row: cell.row,
+                col: cell.col,
+                number: cell.row * 10 + cell.col + 1
+            }));
+            
+            result.push(pieceCells);
+        }
+        
+        // 确保拼图数量不超过10个
+        return result.slice(0, 10);
+    }
+
+    // 查找网格中未分配的单元格
+    function findUnassignedCell(grid) {
+        for (let row = 0; row < 10; row++) {
+            for (let col = 0; col < 10; col++) {
+                if (!grid[row][col].assigned) {
+                    return {row, col};
+                }
+            }
+        }
+        return null;
+    }
+
+    // 从种子单元格生长指定大小的拼图
+    function growPieceFromSeed(grid, seed, targetSize, pieceId) {
+        const cells = [];
+        const queue = [seed];
+        
+        // 标记种子单元格为已分配
+        grid[seed.row][seed.col].assigned = true;
+        grid[seed.row][seed.col].pieceId = pieceId;
+        cells.push({row: seed.row, col: seed.col});
+        
+        // 定义四个方向：上、右、下、左
+        const directions = [
+            {r: -1, c: 0},  // 上
+            {r: 0, c: 1},   // 右
+            {r: 1, c: 0},   // 下
+            {r: 0, c: -1}   // 左
+        ];
+        
+        // 随机排序方向，增加拼图形状的随机性
+        shuffleArray(directions);
+        
+        // 从种子开始，广度优先搜索扩展拼图
+        while (cells.length < targetSize && queue.length > 0) {
+            const current = queue.shift();
+            
+            // 再次随机排序方向
+            shuffleArray(directions);
+            
+            // 尝试四个方向扩展
+            for (const dir of directions) {
+                if (cells.length >= targetSize) break;
+                
+                const newRow = current.row + dir.r;
+                const newCol = current.col + dir.c;
+                
+                // 检查是否在网格范围内
+                if (newRow >= 0 && newRow < 10 && newCol >= 0 && newCol < 10) {
+                    // 检查是否已分配
+                    if (!grid[newRow][newCol].assigned) {
+                        // 标记为已分配
+                        grid[newRow][newCol].assigned = true;
+                        grid[newRow][newCol].pieceId = pieceId;
+                        
+                        // 添加到拼图和队列
+                        cells.push({row: newRow, col: newCol});
+                        queue.push({row: newRow, col: newCol});
+                    }
+                }
+            }
+        }
+        
+        return cells;
+    }
+
+    // 数组随机打乱函数
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    // 传统方式生成拼图，并尝试补齐未分配格子
+    function generatePiecesTraditionalWay(grid, pieceSpecs) {
+        const allPieces = [];
+        
+        // 按规格生成拼图
+        for (const spec of pieceSpecs) {
+            const { size, count } = spec;
+            
+            for (let i = 0; i < count; i++) {
+                // 尝试多次生成当前规格的拼图
+                let piece = null;
+                for (let attempt = 0; attempt < 200; attempt++) {
+                    piece = generateConnectedPiece(grid, size);
+                    if (piece) break;
+                }
+                
+                if (piece) {
+                    allPieces.push(piece);
+                    // 标记已分配的格子
+                    piece.forEach(cell => {
+                        grid[cell.row][cell.col].assigned = true;
+                    });
+                } else {
+                    console.warn(`无法生成大小为 ${size} 的拼图 #${i+1}，尝试生成较小拼图`);
+                    
+                    // 如果无法生成指定大小的拼图，尝试生成较小的拼图
+                    const smallerSize = Math.max(4, size - 2);
+                    for (let attempt = 0; attempt < 200; attempt++) {
+                        piece = generateConnectedPiece(grid, smallerSize);
+                        if (piece) break;
+                    }
+                    
+                    if (piece) {
+                        allPieces.push(piece);
+                        piece.forEach(cell => {
+                            grid[cell.row][cell.col].assigned = true;
+                        });
+                    } else {
+                        console.warn(`无法生成大小为 ${smallerSize} 的替代拼图`);
+                    }
+                }
+            }
+        }
+        
+        // 检查拼图块数量，确保总数为10个
+        if (allPieces.length < 10) {
+            console.warn(`生成的拼图块不足10个，当前为${allPieces.length}个，尝试生成额外拼图`);
+            
+            // 计算剩余未分配的格子
+            const unassignedCells = [];
+            for (let row = 0; row < 10; row++) {
+                for (let col = 0; col < 10; col++) {
+                    if (!grid[row][col].assigned) {
+                        unassignedCells.push(grid[row][col]);
+                    }
+                }
+            }
+            
+            // 如果还有未分配的格子，并且拼图数量不足10个，生成额外拼图
+            const neededPieces = 10 - allPieces.length;
+            if (unassignedCells.length > 0 && neededPieces > 0) {
+                // 计算每个额外拼图的平均大小
+                const avgSize = Math.floor(unassignedCells.length / neededPieces);
+                
+                for (let i = 0; i < neededPieces && unassignedCells.length > 0; i++) {
+                    // 确定当前拼图的大小（最后一个可能需要收集所有剩余的格子）
+                    const pieceSize = (i === neededPieces - 1) 
+                        ? unassignedCells.length 
+                        : Math.min(avgSize, unassignedCells.length);
+                    
+                    if (pieceSize < 1) continue;
+                    
+                    // 尝试生成连接的拼图
+                    const startCell = unassignedCells[0];
+                    const connectedCells = findConnectedCells(grid, startCell, pieceSize);
+                    
+                    if (connectedCells.length > 0) {
+                        allPieces.push(connectedCells);
+                        // 标记为已分配，并从未分配列表中移除
+                        connectedCells.forEach(cell => {
+                            grid[cell.row][cell.col].assigned = true;
+                            const index = unassignedCells.findIndex(c => 
+                                c.row === cell.row && c.col === cell.col);
+                            if (index !== -1) {
+                                unassignedCells.splice(index, 1);
+                            }
+                        });
+                    }
+                }
+            }
+            
+            // 如果还有未分配的格子，将它们分配到现有的拼图中
+            if (unassignedCells.length > 0 && allPieces.length > 0) {
+                for (const cell of unassignedCells) {
+                    // 找一个相邻的拼图添加
+                    let added = false;
+                    
+                    // 检查四个方向的相邻单元格
+                    const directions = [{r:-1,c:0}, {r:0,c:1}, {r:1,c:0}, {r:0,c:-1}];
+                    
+                    // 查找周围有没有已分配的格子，如果有，则加入同一个拼图
+                    for (let i = 0; i < allPieces.length && !added; i++) {
+                        const piece = allPieces[i];
+                        for (const pieceCell of piece) {
+                            for (const dir of directions) {
+                                if (pieceCell.row + dir.r === cell.row && pieceCell.col + dir.c === cell.col) {
+                                    piece.push(cell);
+                                    grid[cell.row][cell.col].assigned = true;
+                                    added = true;
+                                    break;
+                                }
+                            }
+                            if (added) break;
+                        }
+                    }
+                    
+                    // 如果没有相邻的拼图，随机选择一个拼图添加
+                    if (!added && allPieces.length > 0) {
+                        const randomPieceIndex = Math.floor(Math.random() * allPieces.length);
+                        allPieces[randomPieceIndex].push(cell);
+                        grid[cell.row][cell.col].assigned = true;
+                    }
+                }
+            }
+        } else if (allPieces.length > 10) {
+            // 如果生成的拼图块超过10个，则只保留前10个
+            console.warn(`生成的拼图块超过10个，当前为${allPieces.length}个，将只保留前10个`);
+            allPieces.splice(10);
+        }
+        
+        // 确保返回的拼图块数量不超过10个
+        return allPieces.slice(0, 10);
+    }
+
+    // 创建拼图DOM元素
+    function createPieceElement(cells, color, id) {
+        // 计算拼图的边界
+        const rows = cells.map(cell => cell.row);
+        const cols = cells.map(cell => cell.col);
+        const minRow = Math.min(...rows);
+        const maxRow = Math.max(...rows);
+        const minCol = Math.min(...cols);
+        const maxCol = Math.max(...cols);
+        
+        // 计算尺寸
+        const numRows = maxRow - minRow + 1;
+        const numCols = maxCol - minCol + 1;
+        
+        // 创建拼图容器
+        const pieceElement = document.createElement('div');
+        pieceElement.className = 'piece';
+        pieceElement.style.gridTemplateRows = `repeat(${numRows}, 40px)`;
+        pieceElement.style.gridTemplateColumns = `repeat(${numCols}, 40px)`;
+        pieceElement.draggable = true; // 确保元素可拖拽
+        
+        // 存储关键信息，用于放置
+        pieceElement.dataset.pieceId = id;
+        pieceElement.dataset.minRow = minRow;
+        pieceElement.dataset.minCol = minCol;
+        
+        // 设置拼图的数据属性
+        pieceElement.dataset.cells = JSON.stringify(cells);
+        
+        // 为拼图添加拖动事件
+        pieceElement.addEventListener('dragstart', handleDragStart);
+        pieceElement.addEventListener('dragend', handleDragEnd);
+        
+        // 确保鼠标样式正确
+        pieceElement.style.cursor = 'grab';
+        
+        // 创建拼图单元格位置映射
+        const cellMap = {};
+        cells.forEach(cell => {
+            const key = `${cell.row - minRow},${cell.col - minCol}`;
+            cellMap[key] = cell;
+        });
+        
+        // 填充拼图网格
+        for (let i = 0; i < numRows; i++) {
+            for (let j = 0; j < numCols; j++) {
+                const key = `${i},${j}`;
+                const pieceCell = document.createElement('div');
+                pieceCell.className = 'piece-cell';
+                
+                if (cellMap[key]) {
+                    pieceCell.style.backgroundColor = color;
+                    pieceCell.textContent = cellMap[key].number;
+                    pieceCell.dataset.number = cellMap[key].number;
+                    pieceCell.dataset.row = cellMap[key].row;
+                    pieceCell.dataset.col = cellMap[key].col;
+                } else {
+                    pieceCell.style.visibility = 'hidden';
+                }
+                
+                pieceElement.appendChild(pieceCell);
+            }
+        }
+        
+        return pieceElement;
+    }
+
+    // 处理拖动处理函数
+    function handleDragStart(e) {
+        // 确保鼠标左键事件
+        if (e.button !== 0) return;
+        
+        // 保存被拖动元素的信息
+        const piece = e.currentTarget;
+        const pieceId = parseInt(piece.dataset.pieceId);
+        const pieceObj = gameState.pieces[pieceId];
+        
+        // 保存当前拖动的拼图，用于预览
+        gameState.currentDraggingPiece = pieceObj;
+        
+        // 判断拼图是否在网格中，如果是，从原位置移除
+        if (pieceObj.inGrid) {
+            // 临时保存位置信息，用于放置回相同位置时避免重复绘制
+            pieceObj._lastPosition = {
+                row: pieceObj.position.row,
+                col: pieceObj.position.col
+            };
+            
+            // 从原位置移除格子数据，但不移除DOM元素
+            removePieceFromGridData(pieceId);
+        }
+        
+        // 设置传输数据
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+            pieceId: pieceId,
+            minRow: parseInt(piece.dataset.minRow),
+            minCol: parseInt(piece.dataset.minCol),
+            fromGrid: pieceObj.inGrid, // 是否从网格中拖拽
+        }));
+        
+        // 设置拖拽效果
+        e.dataTransfer.effectAllowed = 'move';
+        
+        // 样式调整
+        piece.classList.add('dragging');
+        piece.style.zIndex = '1000';
+        
+        // 阻止事件冒泡
+        e.stopPropagation();
+    }
+
+    function handleDragEnd(e) {
+        const piece = e.currentTarget;
+        piece.classList.remove('dragging');
+        piece.style.zIndex = '';
+        
+        // 清除预览
+        clearPiecePreview();
+        gameState.currentDraggingPiece = null;
+    }
+
+    // 处理拖动经过事件
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        if (!gameState.isGameStarted || !gameState.currentDraggingPiece) return;
+        
+        // 获取网格元素的位置
+        const gridRect = elements.numberGrid.getBoundingClientRect();
+        
+        // 检查鼠标是否在网格内
+        const isMouseInGrid = 
+            e.clientX >= gridRect.left && 
+            e.clientX < gridRect.right && 
+            e.clientY >= gridRect.top && 
+            e.clientY < gridRect.bottom;
+            
+        if (isMouseInGrid) {
+            // 计算鼠标相对于网格的位置
+            const relX = e.clientX - gridRect.left;
+            const relY = e.clientY - gridRect.top;
+            
+            // 计算对应的网格行列
+            const cellSize = 40;
+            const col = Math.floor(relX / cellSize);
+            const row = Math.floor(relY / cellSize);
+            
+            // 确保targetRow和targetCol在合理范围内（0-9）
+            const targetRow = Math.max(0, Math.min(9, row));
+            const targetCol = Math.max(0, Math.min(9, col));
+            
+            // 获取当前拖动的拼图
+            const piece = gameState.currentDraggingPiece;
+            
+            // 显示拼图预览
+            showPiecePreview(piece, targetRow, targetCol);
+        } else {
+            // 不在网格内，清除预览
+            clearPiecePreview();
+        }
+    }
+
+    function handleDragEnter(e) {
+        e.preventDefault();
+        e.currentTarget.classList.add('highlight');
+    }
+
+    function handleDragLeave(e) {
+        e.currentTarget.classList.remove('highlight');
+    }
+
+    // 显示拼图预览
+    function showPiecePreview(piece, targetRow, targetCol) {
+        // 清除之前的预览
+        clearPiecePreview();
+        
+        // 如果没有拼图或游戏未开始，不显示预览
+        if (!piece || !gameState.isGameStarted) return;
+        
+        // 获取拼图的最小行列值
+        const minRow = Math.min(...piece.cells.map(cell => cell.row));
+        const minCol = Math.min(...piece.cells.map(cell => cell.col));
+        
+        // 创建或使用预览元素
+        if (!gameState.previewElement) {
+            gameState.previewElement = document.createElement('div');
+            gameState.previewElement.className = 'piece-preview';
+            elements.numberGrid.appendChild(gameState.previewElement);
+        }
+        
+        // 检查是否可以放置
+        let canPlace = true;
+        const affectedCells = [];
+        
+        for (const cell of piece.cells) {
+            // 计算相对于拼图左上角的偏移
+            const relativeRow = cell.row - minRow;
+            const relativeCol = cell.col - minCol;
+            
+            // 计算在网格中的实际位置
+            const gridRow = targetRow + relativeRow;
+            const gridCol = targetCol + relativeCol;
+            
+            // 检查位置是否在网格内
+            if (gridRow < 0 || gridRow >= 10 || gridCol < 0 || gridCol >= 10) {
+                canPlace = false;
+                break;
+            }
+            
+            // 检查位置是否被占用（不是被自己占用）
+            if (gameState.grid[gridRow][gridCol].filled && 
+                gameState.grid[gridRow][gridCol].pieceId !== piece.id) {
+                canPlace = false;
+                break;
+            }
+            
+            affectedCells.push({
+                cell: cell,
+                gridRow: gridRow,
+                gridCol: gridCol,
+                isCorrect: cell.number === gameState.grid[gridRow][gridCol].number
+            });
+        }
+        
+        // 计算预览元素的尺寸和位置
+        const cellSize = 40; // 单元格大小
+        
+        // 计算预览尺寸（始终使用拼图的实际大小）
+        const rowsCount = Math.max(...piece.cells.map(c => c.row - minRow)) + 1;
+        const colsCount = Math.max(...piece.cells.map(c => c.col - minCol)) + 1;
+        
+        // 设置预览元素的样式，确保与网格完全对齐
+        gameState.previewElement.style.position = 'absolute';
+        gameState.previewElement.style.left = `${targetCol * cellSize}px`;
+        gameState.previewElement.style.top = `${targetRow * cellSize}px`;
+        gameState.previewElement.style.width = `${colsCount * cellSize}px`;
+        gameState.previewElement.style.height = `${rowsCount * cellSize}px`;
+        gameState.previewElement.style.display = 'grid';
+        gameState.previewElement.style.gridTemplateRows = `repeat(${rowsCount}, ${cellSize}px)`;
+        gameState.previewElement.style.gridTemplateColumns = `repeat(${colsCount}, ${cellSize}px)`;
+        gameState.previewElement.style.pointerEvents = 'none'; // 确保不会干扰拖拽事件
+        gameState.previewElement.style.zIndex = '10'; // 确保预览显示在最上层
+        
+        // 设置边框样式，反映是否可放置
+        if (canPlace) {
+            gameState.previewElement.style.border = '2px solid rgba(50, 205, 50, 0.8)';
+            gameState.previewElement.style.boxShadow = '0 0 15px rgba(50, 205, 50, 0.6)';
+        } else {
+            gameState.previewElement.style.border = '2px solid rgba(255, 69, 0, 0.8)';
+            gameState.previewElement.style.boxShadow = '0 0 15px rgba(255, 69, 0, 0.6)';
+        }
+        
+        // 创建预览单元格
+        gameState.previewElement.innerHTML = '';
+        
+        // 创建预览网格
+        const previewGrid = Array(rowsCount).fill().map(() => Array(colsCount).fill(null));
+        
+        // 填充预览网格
+        for (const cell of piece.cells) {
+            const rowIndex = cell.row - minRow;
+            const colIndex = cell.col - minCol;
+            
+            // 找到对应的受影响单元格
+            const affectedCell = affectedCells.find(a => 
+                a.cell.row === cell.row && a.cell.col === cell.col);
+                
+            if (affectedCell) {
+                previewGrid[rowIndex][colIndex] = affectedCell;
+            }
+        }
+        
+        // 基于预览网格创建单元格
+        for (let r = 0; r < rowsCount; r++) {
+            for (let c = 0; c < colsCount; c++) {
+                const cellDiv = document.createElement('div');
+                cellDiv.className = 'preview-cell';
+                cellDiv.style.width = `${cellSize - 2}px`;
+                cellDiv.style.height = `${cellSize - 2}px`;
+                cellDiv.style.margin = '1px';
+                cellDiv.style.display = 'flex';
+                cellDiv.style.justifyContent = 'center';
+                cellDiv.style.alignItems = 'center';
+                cellDiv.style.fontSize = '16px';
+                cellDiv.style.fontWeight = 'bold';
+                
+                const affectedCell = previewGrid[r][c];
+                if (affectedCell) {
+                    // 根据放置状态设置适当的样式类和颜色
+                    if (canPlace) {
+                        if (affectedCell.isCorrect) {
+                            cellDiv.classList.add('correct');
+                            cellDiv.style.backgroundColor = 'rgba(50, 205, 50, 0.7)';
+                            cellDiv.style.border = '2px solid rgba(0, 128, 0, 0.9)';
+                        } else {
+                            cellDiv.classList.add('incorrect');
+                            cellDiv.style.backgroundColor = 'rgba(255, 165, 0, 0.7)';
+                            cellDiv.style.border = '2px solid rgba(255, 140, 0, 0.9)';
+                        }
+                    } else {
+                        cellDiv.style.backgroundColor = 'rgba(255, 69, 0, 0.7)';
+                        cellDiv.style.border = '2px solid rgba(178, 34, 34, 0.9)';
+                    }
+                    
+                    // 显示数字
+                    cellDiv.textContent = affectedCell.cell.number;
+                    
+                    // 保存到预览单元格数组
+                    gameState.previewCells.push(cellDiv);
+                } else {
+                    cellDiv.style.visibility = 'hidden';
+                }
+                
+                gameState.previewElement.appendChild(cellDiv);
+            }
+        }
+    }
+
+    // 清除拼图预览
+    function clearPiecePreview() {
+        // 清除预览单元格
+        gameState.previewCells = [];
+        
+        // 隐藏预览元素
+        if (gameState.previewElement) {
+            gameState.previewElement.style.display = 'none';
+            gameState.previewElement.innerHTML = '';
+        }
+    }
+
+    // 从网格中移除拼图数据，但保留DOM元素
+    function removePieceFromGridData(pieceId) {
+        const piece = gameState.pieces[pieceId];
+        if (!piece.inGrid) return;
+        
+        const position = piece.position;
+        
+        // 清除网格相关单元格的状态，并清除显示
+        for (const cell of piece.cells) {
+            const gridRow = cell.row - position.minRow + position.row;
+            const gridCol = cell.col - position.minCol + position.col;
+            
+            if (gridRow >= 0 && gridRow < 10 && gridCol >= 0 && gridCol < 10) {
+                const gridCell = gameState.grid[gridRow][gridCol];
+                if (gridCell.pieceId === pieceId) {
+                    gridCell.filled = false;
+                    gridCell.pieceId = null;
+                    // 清除单元格显示，避免重复显示
+                    gridCell.element.style.backgroundColor = '';
+                    gridCell.element.textContent = '';
+                    gridCell.element.style.outline = '';
+                }
+            }
+        }
+        
+        // 标记拼图为非网格状态，但不删除DOM元素
+        piece.inGrid = false;
+        // 保留position信息，如果拖拽失败可以用来恢复
+    }
+
+    // 完全从网格中移除拼图，包括DOM元素
+    function removePieceFromGrid(pieceId) {
+        const piece = gameState.pieces[pieceId];
+        if (!piece.inGrid) return;
+        
+        const position = piece.position;
+        
+        // 清除网格相关单元格的状态
+        for (const cell of piece.cells) {
+            const gridRow = cell.row - position.minRow + position.row;
+            const gridCol = cell.col - position.minCol + position.col;
+            
+            if (gridRow >= 0 && gridRow < 10 && gridCol >= 0 && gridCol < 10) {
+                const gridCell = gameState.grid[gridRow][gridCol];
+                if (gridCell.pieceId === pieceId) {
+                    gridCell.filled = false;
+                    gridCell.pieceId = null;
+                    gridCell.element.style.backgroundColor = '';
+                    gridCell.element.textContent = '';
+                    gridCell.element.style.outline = '';
+                }
+            }
+        }
+        
+        // 更新拼图状态
+        piece.inGrid = false;
+        piece.position = null;
+        
+        // 检查是否正确放置，如果是，减少计数
+        checkCorrectPlacement(piece, true);
+        
+        // 检查游戏状态
+        checkGameCompletion();
+    }
+
+    // 放置拼图到网格
+    function placePieceToGrid(pieceId, row, col) {
+        const piece = gameState.pieces[pieceId];
+        
+        // 如果这个拼图之前已在网格中的其他位置，确保完全移除旧位置的显示
+        if (piece.inGrid && piece.position && 
+           (piece.position.row !== row || piece.position.col !== col)) {
+            // 完全从原位置移除（数据和显示）
+            removePieceFromGridData(pieceId);
+        }
+        
+        // 检查是否放回原位置，如果是则无需操作
+        if (piece._lastPosition && piece._lastPosition.row === row && piece._lastPosition.col === col) {
+            // 恢复拼图在网格中的状态
+            restorePieceInGrid(pieceId, piece._lastPosition);
+            piece._lastPosition = null;
+            return true; // 直接返回成功
+        }
+        
+        const minRow = Math.min(...piece.cells.map(cell => cell.row));
+        const minCol = Math.min(...piece.cells.map(cell => cell.col));
+        
+        // 检查是否可以放置
+        let canPlace = true;
+        const affectedCells = [];
+        
+        for (const cell of piece.cells) {
+            const relativeRow = cell.row - minRow;
+            const relativeCol = cell.col - minCol;
+            
+            const gridRow = row + relativeRow;
+            const gridCol = col + relativeCol;
+            
+            // 检查位置是否在网格内
+            if (gridRow < 0 || gridRow >= 10 || gridCol < 0 || gridCol >= 10) {
+                canPlace = false;
+                break;
+            }
+            
+            // 检查位置是否被占用（不是被自己占用）
+            if (gameState.grid[gridRow][gridCol].filled && 
+                gameState.grid[gridRow][gridCol].pieceId !== pieceId) {
+                canPlace = false;
+                break;
+            }
+            
+            affectedCells.push({
+                cell: cell,
+                gridRow: gridRow,
+                gridCol: gridCol
+            });
+        }
+        
+        if (canPlace) {
+            // 清除预览
+            clearPiecePreview();
+            
+            // 放置拼图
+            for (const {cell, gridRow, gridCol} of affectedCells) {
+                const gridCell = gameState.grid[gridRow][gridCol];
+                gridCell.filled = true;
+                gridCell.pieceId = pieceId;
+                gridCell.element.style.backgroundColor = piece.color;
+                gridCell.element.textContent = cell.number; // 保持原来的数字
+                gridCell.element.style.outline = ''; // 清除预览的边框
+            }
+            
+            // 更新拼图状态
+            piece.inGrid = true;
+            piece.position = {
+                row: row,
+                col: col,
+                minRow: minRow,
+                minCol: minCol
+            };
+            
+            // 设置拼图在网格中的位置 - 确保精确定位
+            const cellSize = 40; // 与CSS中的单元格大小保持一致
+            piece.element.style.position = 'absolute';
+            piece.element.style.left = `${col * cellSize}px`;
+            piece.element.style.top = `${row * cellSize}px`;
+            piece.element.style.zIndex = '5'; // 确保位于网格内单元格之上
+            
+            // 确保拼图元素在网格中
+            if (piece.element.parentElement !== elements.numberGrid) {
+                elements.numberGrid.appendChild(piece.element);
+            }
+            
+            // 检查是否正确放置
+            checkCorrectPlacement(piece);
+            
+            // 清除临时存储的位置信息
+            piece._lastPosition = null;
+            
+            // 检查游戏是否完成
+            checkGameCompletion();
+            
+            return true;
+        }
+        
+        // 如果不能放置但之前在网格中，尝试恢复原位置
+        if (piece._lastPosition) {
+            restorePieceInGrid(pieceId, piece._lastPosition);
+        }
+        
+        // 清除临时存储的位置信息
+        piece._lastPosition = null;
+        return false;
+    }
+
+    // 恢复拼图在网格中的原位置
+    function restorePieceInGrid(pieceId, position) {
+        const piece = gameState.pieces[pieceId];
+        const {row, col, minRow, minCol} = position;
+        
+        // 重新填充网格数据并更新显示
+        for (const cell of piece.cells) {
+            const relativeRow = cell.row - minRow;
+            const relativeCol = cell.col - minCol;
+            
+            const gridRow = row + relativeRow;
+            const gridCol = col + relativeCol;
+            
+            if (gridRow >= 0 && gridRow < 10 && gridCol >= 0 && gridCol < 10) {
+                const gridCell = gameState.grid[gridRow][gridCol];
+                gridCell.filled = true;
+                gridCell.pieceId = pieceId;
+                gridCell.element.style.backgroundColor = piece.color;
+                gridCell.element.textContent = cell.number;
+            }
+        }
+        
+        // 确保拼图DOM元素位置正确
+        const cellSize = 40;
+        piece.element.style.position = 'absolute';
+        piece.element.style.left = `${col * cellSize}px`;
+        piece.element.style.top = `${row * cellSize}px`;
+        
+        // 更新拼图状态
+        piece.inGrid = true;
+        piece.position = position;
+        
+        // 恢复检查是否正确放置
+        checkCorrectPlacement(piece);
+    }
+
+    // 处理拖放结束
+    function handleDrop(e) {
+        e.preventDefault();
+        
+        if (gameState.currentDraggingPiece && gameState.isGameStarted) {
+            // 获取鼠标位置
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            
+            // 获取网格元素的位置
+            const gridRect = elements.numberGrid.getBoundingClientRect();
+            
+            // 检查鼠标是否在网格内
+            const isMouseInGrid = 
+                mouseX >= gridRect.left && 
+                mouseX < gridRect.right && 
+                mouseY >= gridRect.top && 
+                mouseY < gridRect.bottom;
+                
+            if (isMouseInGrid) {
+                // 计算鼠标相对于网格的位置
+                const relX = mouseX - gridRect.left;
+                const relY = mouseY - gridRect.top;
+                
+                // 计算对应的网格行列
+                const cellSize = 40;
+                const col = Math.floor(relX / cellSize);
+                const row = Math.floor(relY / cellSize);
+                
+                // 确保targetRow和targetCol在合理范围内（0-9）
+                const targetRow = Math.max(0, Math.min(9, row));
+                const targetCol = Math.max(0, Math.min(9, col));
+                
+                // 直接尝试放置拼图到计算出的位置
+                placePieceToGrid(gameState.currentDraggingPiece.id, targetRow, targetCol);
+            } else {
+                // 如果不在网格区域，则将拼图放回原来的位置区域
+                const piece = gameState.currentDraggingPiece;
+                if (piece._lastPosition) {
+                    restorePieceInGrid(piece.id, piece._lastPosition);
+                    piece._lastPosition = null;
+                } else if (piece.inGrid && piece.position) {
+                    // 如果已经在网格中，保持原位置
+                    restorePieceInGrid(piece.id, piece.position);
+                } else {
+                    // 移回拼图区域
+                    if (piece.element.parentElement !== elements.pieces) {
+                        elements.pieces.appendChild(piece.element);
+                    }
+                    piece.element.style.position = '';
+                    piece.element.style.left = '';
+                    piece.element.style.top = '';
+                    piece.element.style.zIndex = '';
+                }
+            }
+        }
+        
+        // 清除预览和拖动状态
+        clearPiecePreview();
+        gameState.currentDraggingPiece = null;
+        
+        // 移除所有单元格的高亮状态
+        document.querySelectorAll('.grid-cell.highlight').forEach(cell => {
+            cell.classList.remove('highlight');
+        });
+    }
+
+    // 检查拼图是否正确放置
+    function checkCorrectPlacement(piece, removing = false) {
+        if (!piece.inGrid) return false;
+        
+        let isCorrect = true;
+        const position = piece.position;
+        
+        for (const cell of piece.cells) {
+            const gridRow = cell.row - position.minRow + position.row;
+            const gridCol = cell.col - position.minCol + position.col;
+            
+            if (gridRow < 0 || gridRow >= 10 || gridCol < 0 || gridCol >= 10) {
+                isCorrect = false;
+                break;
+            }
+            
+            const gridCell = gameState.grid[gridRow][gridCol];
+            if (gridCell.number !== cell.number) {
+                isCorrect = false;
+                break;
+            }
+        }
+        
+        // 更新正确放置计数
+        if (isCorrect) {
+            if (removing) {
+                gameState.correctPlacements--;
+            } else {
+                // 播放正确音效
+                elements.correctSound.currentTime = 0;
+                elements.correctSound.play();
+                
+                // 增加分数
+                updateScore(50);
+                
+                gameState.correctPlacements++;
+            }
+        }
+        
+        return isCorrect;
+    }
+
+    // 更新分数
+    function updateScore(points) {
+        gameState.score += points;
+        elements.score.textContent = gameState.score;
+    }
+
+    // 检查游戏是否完成
+    function checkGameCompletion() {
+        // 确保一共正确放置了10个拼图才算游戏完成
+        if (gameState.correctPlacements === 10) {
+            gameCompleted();
+        }
+    }
+
+    // 游戏完成处理
+    function gameCompleted() {
+        gameState.isGameCompleted = true;
+        clearInterval(gameState.timerInterval);
+        
+        // 播放成功音效
+        elements.successSound.play();
+        
+        // 显示烟花特效
+        showFireworks();
+        
+        // 显示祝贺模态框
+        setTimeout(() => {
+            elements.finalScore.textContent = gameState.score;
+            elements.finalTime.textContent = elements.timer.textContent;
+            elements.congratsModal.style.display = 'flex';
+        }, 1500);
+    }
+
+    // 显示烟花特效
+    function showFireworks() {
+        elements.fireworks.style.display = 'block';
+        
+        const createFirework = () => {
+            const firework = document.createElement('div');
+            firework.className = 'firework';
+            firework.style.left = `${Math.random() * 100}%`;
+            firework.style.top = `${Math.random() * 100}%`;
+            firework.style.boxShadow = `0 0 8px 2px ${colors[Math.floor(Math.random() * colors.length)]}`;
+            
+            elements.fireworks.appendChild(firework);
+            
+            // 动画结束后移除烟花
+            setTimeout(() => {
+                firework.remove();
+            }, 2000);
+        };
+        
+        // 创建多个烟花
+        for (let i = 0; i < 50; i++) {
+            setTimeout(createFirework, i * 100);
+        }
+    }
+
+    // 页面加载完成后初始化游戏
+    document.addEventListener('DOMContentLoaded', initGame);
+
+    // 放置拼图的辅助函数 - 这是之前缺失但在代码中引用的函数
+    function placePiece(piece, row, col) {
+        if (!piece) return false;
+        
+        // 直接调用放置拼图到网格的函数
+        return placePieceToGrid(piece.id, row, col);
+    } 
+    </script>
+</body>
+</html> 
